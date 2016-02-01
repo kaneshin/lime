@@ -1,1 +1,10 @@
 box: wercker/golang@1.1.1
+
+build:
+  steps:
+    - script:
+        name: go build
+        code: |
+          cd $WERCKER_SOURCE_DIR
+          go build
+
