@@ -1,5 +1,7 @@
 # lime
 
+[![wercker status](https://app.wercker.com/status/5ae8f488a3136a826b480a6bbf33138a/s/master "wercker status")](https://app.wercker.com/project/bykey/5ae8f488a3136a826b480a6bbf33138a)
+
 `lime` is a simple command line utility for live-reloading Go applications.
 Just run `lime` in your app directory and your web app will be served with 
 `lime` as a proxy. `lime` will automatically recompile your code when it 
