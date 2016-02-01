@@ -32,12 +32,10 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.IntFlag{
 			Name:  "port",
-			Value: 3000,
 			Usage: "port for the proxy server",
 		},
 		cli.IntFlag{
 			Name:  "app-port",
-			Value: 3001,
 			Usage: "port for the Go web server",
 		},
 		cli.StringFlag{
@@ -47,7 +45,6 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "ignore-pattern",
-			Value: "",
 			Usage: "pattern to ignore",
 		},
 		cli.StringFlag{
@@ -85,8 +82,6 @@ var (
 )
 
 func mainAction(c *cli.Context) {
-	port := c.GlobalInt("port")
-	appPort := strconv.Itoa(c.GlobalInt("app-port"))
 	immediate = c.GlobalBool("immediate")
 
 	wd, err := os.Getwd()
@@ -109,17 +104,22 @@ func mainAction(c *cli.Context) {
 	runner.SetWriter(os.Stdout)
 	proxy := gin.NewProxy(builder, runner)
 
-	config := &gin.Config{
-		Port:    port,
-		ProxyTo: "http://localhost:" + appPort,
-	}
+	if port := c.GlobalInt("port"); port > 0 {
+		appPort := c.GlobalInt("app-port")
+		if appPort == 0 {
+			appPort = port + 1
+		}
+		config := &gin.Config{
+			Port:    port,
+			ProxyTo: "http://localhost:" + strconv.Itoa(appPort),
+		}
 
-	err = proxy.Run(config)
-	if err != nil {
-		logger.Fatal(err)
-	}
+		if err := proxy.Run(config); err != nil {
+			logger.Fatal(err)
+		}
 
-	logger.Printf("listening on port %d\n", port)
+		logger.Printf("listening on port %d\n", port)
+	}
 
 	shutdown(runner)
 
