@@ -27,7 +27,8 @@ var (
 func main() {
 	app := cli.NewApp()
 	app.Name = "lime"
-	app.Usage = "A live reload utility for Go web applications."
+	app.Usage = "A live reload utility for Go applications."
+	app.Version = "1.0.0"
 	app.Action = mainAction
 	app.Flags = []cli.Flag{
 		cli.IntFlag{
