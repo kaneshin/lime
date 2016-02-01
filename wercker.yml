@@ -16,6 +16,7 @@ build:
     - script:
         name: go get
         code: |
+          cd $WERCKER_SOURCE_DIR
           go get ./...
 
     # Build the project
