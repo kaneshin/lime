@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 
@@ -20,7 +22,13 @@ import (
 
 var (
 	buildTime = time.Now()
-	logger    = log.New(os.Stdout, "[lime] ", 0)
+	logger    = struct {
+		info *log.Logger
+		warn *log.Logger
+	}{
+		log.New(os.Stdout, "[lime-INFO] ", log.Ldate|log.Ltime),
+		log.New(os.Stdout, "[lime-WARN] ", log.Ldate|log.Ltime),
+	}
 	immediate = false
 )
 
@@ -83,11 +91,13 @@ var (
 )
 
 func mainAction(c *cli.Context) {
+	// TODO: New feature to check update binary is
+	// logger.info.Printf("Skipping lime update check.\n")
 	immediate = c.GlobalBool("immediate")
 
 	wd, err := os.Getwd()
 	if err != nil {
-		logger.Fatal(err)
+		logger.warn.Fatal(err)
 	}
 
 	bp := wd
@@ -104,6 +114,12 @@ func mainAction(c *cli.Context) {
 	}
 	runner.SetWriter(os.Stdout)
 	proxy := gin.NewProxy(builder, runner)
+	f := func(w http.ResponseWriter, r *http.Request) {
+		runner.Kill()
+		runner.Run()
+	}
+	server := httptest.NewServer(http.HandlerFunc(f))
+	logger.info.Printf("Starting lime server at: %s\n", server.URL)
 
 	if port := c.GlobalInt("port"); port > 0 {
 		appPort := c.GlobalInt("app-port")
@@ -116,16 +132,16 @@ func mainAction(c *cli.Context) {
 		}
 
 		if err := proxy.Run(config); err != nil {
-			logger.Fatal(err)
+			logger.warn.Fatal(err)
 		}
 
-		logger.Printf("listening on port %d\n", port)
+		logger.info.Printf("listening on port %d\n", port)
 	}
 
 	shutdown(runner)
 
 	// build right now
-	build(builder, runner, logger)
+	build(builder, runner)
 
 	// scan for changes
 	if p := c.GlobalString("ignore-pattern"); len(p) > 0 {
@@ -145,18 +161,17 @@ func mainAction(c *cli.Context) {
 				ext := filepath.Ext(path)
 				switch {
 				case bpat != nil && bpat.MatchString(ext):
-					logger.Printf("Detected file changes: %s", path)
-					buildTime = time.Now()
+					logger.info.Printf("Detected file changes:\n  %s", path)
 					runner.Kill()
-					build(builder, runner, logger)
+					build(builder, runner)
 				case rpat != nil && rpat.MatchString(ext):
-					logger.Printf("Detected file changes: %s", path)
-					buildTime = time.Now()
+					logger.info.Printf("Detected file changes:\n  %s", path)
 					runner.Kill()
 					runner.Run()
 				default:
 					return nil
 				}
+				buildTime = time.Now()
 				return errors.New("done")
 			})
 		}
@@ -164,16 +179,16 @@ func mainAction(c *cli.Context) {
 	}
 }
 
-func build(builder gin.Builder, runner gin.Runner, logger *log.Logger) {
-	logger.Println("Build started.")
+func build(builder gin.Builder, runner gin.Runner) {
+	logger.info.Println("Build started")
 	if err := builder.Build(); err != nil {
-		logger.Println("ERROR! Build failed.")
-		logger.Println(builder.Errors())
+		logger.info.Println("ERROR! Build failed")
+		logger.info.Println(builder.Errors())
 		re := regexp.MustCompile("cannot find package \".*\"")
 		matches := re.FindAllStringSubmatch(builder.Errors(), -1)
 		goget(matches)
 	} else {
-		logger.Println("Build Successful.")
+		logger.info.Println("Build Successful")
 		if immediate {
 			runner.Run()
 		}
@@ -185,14 +200,14 @@ func build(builder gin.Builder, runner gin.Runner, logger *log.Logger) {
 func goget(packs [][]string) {
 	goPath, err := exec.LookPath("go")
 	if err != nil {
-		logger.Fatalf("Go executable not found in PATH.")
+		logger.warn.Fatalf("Go executable not found in PATH.")
 	}
 	for _, pack := range packs {
 		for _, p := range pack {
 			rep := strings.Replace(strings.Replace(p, "cannot find package ", "", -1), `"`, "", -1)
 			args := []string{"get", "-u", rep}
 			cmd := exec.Command(goPath, args...)
-			logger.Printf("go get -u %s\n", rep)
+			logger.info.Printf("go get -u %s\n", rep)
 			cmd.CombinedOutput()
 		}
 	}
@@ -203,7 +218,7 @@ type scanCallback func(path string) error
 func scanChanges(watchPath string, cb scanCallback) {
 	filepath.Walk(watchPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			logger.Fatal(err)
+			logger.warn.Fatal(err)
 			return nil
 		}
 
@@ -224,10 +239,10 @@ func shutdown(runner gin.Runner) {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		s := <-c
-		logger.Println("Got signal: ", s)
+		logger.info.Println("Got signal: ", s)
 		err := runner.Kill()
 		if err != nil {
-			logger.Print("Error killing: ", err)
+			logger.info.Print("Error killing: ", err)
 		}
 		os.Exit(1)
 	}()
