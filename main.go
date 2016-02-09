@@ -198,7 +198,7 @@ func build(builder gin.Builder, runner gin.Runner) {
 		et := time.Now()
 		logger.info.Println("Build Successful")
 		if verbose {
-			logger.info.Printf("%v\n", et.Sub(st))
+			logger.info.Printf("Build time: %v\n", et.Sub(st))
 		}
 		if immediate {
 			runner.Run()
