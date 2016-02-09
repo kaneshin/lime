@@ -30,6 +30,7 @@ var (
 		log.New(os.Stdout, "[lime-WARN] ", log.Ldate|log.Ltime),
 	}
 	immediate = false
+	verbose   = false
 )
 
 func main() {
@@ -76,6 +77,10 @@ func main() {
 			Usage: "run the server immediately after it's built",
 		},
 		cli.BoolFlag{
+			Name:  "verbose",
+			Usage: "show verbose output",
+		},
+		cli.BoolFlag{
 			Name:  "godep,g",
 			Usage: "use godep when building",
 		},
@@ -94,6 +99,7 @@ func mainAction(c *cli.Context) {
 	// TODO: New feature to check update binary is
 	// logger.info.Printf("Skipping lime update check.\n")
 	immediate = c.GlobalBool("immediate")
+	verbose = c.GlobalBool("verbose")
 
 	wd, err := os.Getwd()
 	if err != nil {
@@ -180,6 +186,7 @@ func mainAction(c *cli.Context) {
 }
 
 func build(builder gin.Builder, runner gin.Runner) {
+	st := time.Now()
 	logger.info.Println("Build started")
 	if err := builder.Build(); err != nil {
 		logger.info.Println("ERROR! Build failed")
@@ -188,7 +195,11 @@ func build(builder gin.Builder, runner gin.Runner) {
 		matches := re.FindAllStringSubmatch(builder.Errors(), -1)
 		goget(matches)
 	} else {
+		et := time.Now()
 		logger.info.Println("Build Successful")
+		if verbose {
+			logger.info.Printf("%v\n", et.Sub(st))
+		}
 		if immediate {
 			runner.Run()
 		}
