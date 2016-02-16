@@ -11,6 +11,8 @@ HTTP request.
 `lime` adheres to the "silence is golden" principle, so it will only complain 
 if there was a compiler error or if you succesfully compile after an error.
 
+![lime](http://i0.wp.com/www.kaneshin.co/wp-content/uploads/2016/02/65y1806uDp.gif?resize=634%2C424)
+
 ## Installation
 
 ```shell
