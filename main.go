@@ -50,7 +50,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "bin,b",
-			Value: "lime-bin",
+			Value: "./lime-bin",
 			Usage: "path of generated binary file",
 		},
 		cli.StringFlag{
